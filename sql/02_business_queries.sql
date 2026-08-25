@@ -1,7 +1,5 @@
 -- ============================================
 -- SupplyIQ: Business Analysis Queries
--- Run after 01_schema_setup.sql has loaded all data
--- USE supplyiq; -- uncomment if not already selected
 -- ============================================
 
 
