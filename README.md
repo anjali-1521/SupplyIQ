@@ -41,6 +41,7 @@ This finding was reached two independent ways — SQL aggregation and a trained 
 - **Scikit-learn** — Logistic Regression baseline + Random Forest delivery-risk classifier
 - **Matplotlib / Seaborn** — EDA visualizations
 - **Tableau Public** — interactive dashboard
+- **Google Gemini (free tier) + Streamlit** — natural-language SQL assistant
 - **Git & GitHub** — version control
 
 ---
@@ -61,12 +62,17 @@ SupplyIQ/
 ├── model/
 │   ├── train_model.py                # Standalone model training script
 │   └── model_evaluation_report.md    # Model comparison, feature importance, limitations
+├── app/
+│   ├── app.py                        # Streamlit UI for the SupplyIQ Assistant
+│   ├── nl_sql.py                     # Natural-language -> SQL generation, validation, execution
+│   └── db.py                         # MySQL connection (SQLAlchemy engine from env vars)
 ├── tableau/
 │   └── SupplyIQ_Dashboard.twbx
 ├── docs/
 │   ├── findings.md                   # Full SQL-layer business findings
 │   └── screenshots/                  # Chart exports, dashboard screenshot
 ├── requirements.txt
+├── .env.example
 └── README.md
 ```
 
@@ -95,6 +101,35 @@ Rather than querying a single flat CSV, the dataset was normalized into 6 relati
 - **Feature importance:** the three shipping-mode dummy variables account for ~90% of total model importance, independently confirming the SQL findings
 
 Full write-up: [`model/model_evaluation_report.md`](model/model_evaluation_report.md)
+
+---
+
+## 🤖 SupplyIQ Assistant (Natural-Language SQL)
+
+A Streamlit app that lets you ask questions about the supply chain in plain English — no SQL required.
+
+- You type a question (e.g. *"Which region has the worst late-delivery rate?"*)
+- **Gemini** (free-tier Google API) translates it into a SQL query grounded in the actual 6-table schema
+- The query runs against the live **MySQL** `supplyiq` database (the same one set up in [`sql/01_schema_setup.sql`](sql/01_schema_setup.sql) — no separate copy of the data)
+- Gemini summarizes the result in plain English, with the generated SQL and raw data available to inspect
+
+Guardrails: only single `SELECT` statements are generated and executed — write/DDL/DCL keywords (`INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `TRUNCATE`, `GRANT`, …) and multi-statement queries are rejected before anything touches the database. For extra safety in a shared environment, point `MYSQL_USER` at a dedicated MySQL account that only has `SELECT` privileges on `supplyiq`.
+
+**Setup:**
+1. Load the schema and data into MySQL (if you haven't already):
+   ```bash
+   mysql -u root -p < sql/01_schema_setup.sql
+   ```
+2. Get a free Gemini API key at [aistudio.google.com](https://aistudio.google.com/apikey) — no credit card required.
+3. Install dependencies and configure:
+   ```bash
+   pip install -r requirements.txt
+   cp .env.example .env   # add your GOOGLE_API_KEY and MySQL credentials
+   ```
+4. Run it:
+   ```bash
+   streamlit run app/app.py
+   ```
 
 ---
 
@@ -127,6 +162,7 @@ The Tableau dashboard includes:
 - Exploratory data analysis & visualization
 - Supervised machine learning (classification, model comparison, feature importance)
 - Dashboard design (Tableau)
+- LLM application development (natural-language-to-SQL, prompt design, guardrails against unsafe generated queries)
 - Git version control
 
 ---

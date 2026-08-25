@@ -6,3 +6,7 @@ scikit-learn
 mysql-connector-python
 sqlalchemy
 jupyter
+streamlit
+google-genai
+python-dotenv
+tabulate
