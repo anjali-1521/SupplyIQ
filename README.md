@@ -133,6 +133,51 @@ Guardrails: only single `SELECT` statements are generated and executed — write
 
 ---
 
+## 🧱 Databricks Lakehouse Version
+
+The same analysis rebuilt on **Databricks Free Edition** (serverless compute, Unity Catalog, Delta Lake), in the [`databricks/`](databricks/) folder. The MySQL version above is unchanged.
+
+**Architecture: medallion layers, all stored as Delta tables**
+
+| Layer | What it holds | Tables |
+|---|---|---|
+| Bronze | Raw DataCo CSV (read as `ISO-8859-1`), column names converted to snake_case | `bronze_supply_chain` |
+| Silver | Cleaned and typed data: junk columns dropped, nulls filled, dates parsed, duplicates removed, `delay_days` added | `silver_orders` (flat) plus the 6-table relational model (`silver_categories`, `silver_products`, `silver_customers`, `silver_order_headers`, `silver_order_items`, `silver_shipments`) |
+| Gold | Aggregates for dashboards | `gold_shipping_risk`, `gold_monthly_revenue_by_market`, `gold_category_profitability` |
+
+**What the notebook contains** ([`databricks/supplyiq_lakehouse.py`](databricks/supplyiq_lakehouse.py)):
+- The cleaning logic from the EDA notebook, ported to PySpark
+- All 10 business queries from `sql/02_business_queries.sql`, ported to Spark SQL (each one has a comment naming the original query)
+- A monthly volume check that shows the end-of-dataset pricing anomaly, and the same cutoff (orders before `2017-11-01`) applied to revenue tables
+- A PySpark window-function example (month-over-month revenue change)
+- A `DESCRIBE HISTORY` cell to show Delta time travel
+
+**How it compares to the MySQL version**
+
+| | MySQL version | Databricks version |
+|---|---|---|
+| Storage | Relational tables in a MySQL server | Delta tables in Unity Catalog |
+| Raw data | Cleaned in pandas, exported to CSV, then loaded with `LOAD DATA` | Raw CSV kept as a bronze table, cleaned in the same notebook |
+| Cleaning | pandas | PySpark |
+| Business queries | MySQL SQL | Spark SQL (same logic, small syntax changes) |
+| Constraints | Enforced foreign keys | No enforced keys; relationships live in the joins |
+| Dashboard | Tableau | Databricks AI/BI dashboard on the gold tables (optional) |
+| Natural-language access | Gemini-powered Streamlit assistant | Databricks Genie on `silver_orders` (optional) |
+| History | None | Delta time travel |
+
+**Result on Databricks:** the ported Q1 query returns the same late-delivery rates as the MySQL version, which confirms the port reproduces the original analysis.
+
+| Shipping Mode | Total Shipments | Late Shipments | Late Delivery Rate |
+|---|---|---|---|
+| First Class | 27,814 | 26,513 | 95.32% |
+| Second Class | 35,216 | 26,987 | 76.63% |
+| Same Day | 9,737 | 4,454 | 45.74% |
+| Standard Class | 107,752 | 41,023 | 38.07% |
+
+**Run it yourself:** follow [`databricks/SETUP.md`](databricks/SETUP.md).
+
+---
+
 ## 📈 Interactive Dashboard
 
 The Tableau dashboard includes:
